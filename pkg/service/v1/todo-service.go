@@ -90,6 +90,7 @@ func (s *ToDoServer) Create(ctx context.Context, req *v1.CreateRequest) (*v1.Cre
 	}, nil
 }
 
+// Read - read ToDo by Id
 func (s *ToDoServer) Read(ctx context.Context, req *v1.ReadRequest) (*v1.ReadResponse, error) {
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
@@ -143,6 +144,7 @@ func (s *ToDoServer) Read(ctx context.Context, req *v1.ReadRequest) (*v1.ReadRes
 	}, nil
 }
 
+// Update - updates ToDo item
 func (s *ToDoServer) Update(ctx context.Context, req *v1.UpdateRequest) (*v1.UpdateResponse, error) {
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
@@ -155,13 +157,14 @@ func (s *ToDoServer) Update(ctx context.Context, req *v1.UpdateRequest) (*v1.Upd
 	defer c.Close()
 
 	reminder, err := ptypes.Timestamp(req.ToDo.Reminder)
+
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "reminder field is invalid")
 	}
 
 	res, err := c.ExecContext(ctx, "UPDATE ToDo SET 'Title'=?, 'Description'=?"+
 		" 'Reminder'=? WHERE 'ID'=?",
-		req.ToDo.Title, req.ToDo.Description, req.ToDo.Reminder, req.ToDo.Id)
+		req.ToDo.Title, req.ToDo.Description, reminder, req.ToDo.Id)
 
 	if err != nil {
 		return nil, status.Error(codes.Unknown, "failed to update ToDo->"+err.Error())
@@ -179,5 +182,83 @@ func (s *ToDoServer) Update(ctx context.Context, req *v1.UpdateRequest) (*v1.Upd
 	return &v1.UpdateResponse{
 		Api:     apiVersion,
 		Updated: rows,
+	}, nil
+}
+
+// Delete - deletes ToDo item from list
+func (s *ToDoServer) Delete(ctx context.Context, req *v1.DeleteRequest) (*v1.DeleteResponse, error) {
+	if err := s.checkAPI(req.Api); err != nil {
+		return nil, err
+	}
+
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	res, err := c.ExecContext(ctx, "DELETE FROM ToDo WHERE 'ID'=?", req.Id)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to delete ToDo->"+err.Error())
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to retrieve affected rows")
+	}
+
+	if rows == 0 {
+		return nil, status.Error(
+			codes.NotFound,
+			fmt.Sprintf("ToDo with id->%d not found", req.Id),
+		)
+	}
+
+	return &v1.DeleteResponse{
+		Api:     apiVersion,
+		Deleted: rows,
+	}, nil
+}
+
+// ReadAll - reads all ToDo list
+func (s *ToDoServer) ReadAll(ctx context.Context, req *v1.ReadAllRequest) (*v1.ReadAllResponse, error) {
+	if err := s.checkAPI(req.Api); err != nil {
+		return nil, err
+	}
+
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rows, err := c.QueryContext(ctx, "SELECT * FROM ToDo")
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to get ToDo list->"+err.Error())
+	}
+	defer rows.Close()
+
+	var reminder time.Time
+	list := []*v1.ToDo{}
+	for rows.Next() {
+		td := new(v1.ToDo)
+		if err := rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
+			return nil, status.Error(codes.Unknown, "failed to retrieve ToDo row->"+err.Error())
+		}
+
+		td.Reminder, err = ptypes.TimestampProto(reminder)
+		if err != nil {
+			return nil, status.Error(codes.Unknown, "reminder has invalid format -> "+err.Error())
+		}
+		list = append(list, td)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, status.Error(codes.Unknown, "failed to retrieve data from ToDo->"+err.Error())
+	}
+
+	return &v1.ReadAllResponse{
+		Api:   apiVersion,
+		ToDos: list,
 	}, nil
 }
