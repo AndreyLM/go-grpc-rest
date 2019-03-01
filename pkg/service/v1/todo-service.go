@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	v1 "github.com/AndreyLM/go-grpc-rest.git/pkg/api/v1"
+	v1 "github.com/AndreyLM/go-grpc-rest/pkg/api/v1"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 
@@ -68,10 +68,9 @@ func (s *ToDoServer) Create(ctx context.Context, req *v1.CreateRequest) (*v1.Cre
 			"reminder field has invalid format->"+err.Error(),
 		)
 	}
-
 	res, err := c.ExecContext(
 		ctx,
-		"INSERT INTO ToDo('Title, 'Desctiption', 'Reminder') VALUES(?, ?, ?)",
+		"INSERT INTO ToDo(`Title`, `Description`, `Reminder`) VALUES(?, ?, ?)",
 		req.ToDo.Title, req.ToDo.Description, reminder,
 	)
 
@@ -102,8 +101,8 @@ func (s *ToDoServer) Read(ctx context.Context, req *v1.ReadRequest) (*v1.ReadRes
 	}
 	defer c.Close()
 
-	rows, err := c.QueryContext(ctx, "SELECT 'ID', 'Title', 'Description', 'Reminder'"+
-		" FROM ToDo WHERE 'ID'=?", req.Id)
+	rows, err := c.QueryContext(ctx, "SELECT `ID`, `Title`, `Description`, `Reminder`"+
+		" FROM ToDo WHERE `ID`=?", req.Id)
 
 	if err != nil {
 		return nil, status.Error(codes.Unknown, "failed to select from ToDo->"+err.Error())
@@ -162,8 +161,7 @@ func (s *ToDoServer) Update(ctx context.Context, req *v1.UpdateRequest) (*v1.Upd
 		return nil, status.Error(codes.InvalidArgument, "reminder field is invalid")
 	}
 
-	res, err := c.ExecContext(ctx, "UPDATE ToDo SET 'Title'=?, 'Description'=?"+
-		" 'Reminder'=? WHERE 'ID'=?",
+	res, err := c.ExecContext(ctx, "UPDATE ToDo SET `Title`=?, `Description`=?, `Reminder`=? WHERE `ID`=?",
 		req.ToDo.Title, req.ToDo.Description, reminder, req.ToDo.Id)
 
 	if err != nil {
@@ -197,7 +195,7 @@ func (s *ToDoServer) Delete(ctx context.Context, req *v1.DeleteRequest) (*v1.Del
 	}
 	defer c.Close()
 
-	res, err := c.ExecContext(ctx, "DELETE FROM ToDo WHERE 'ID'=?", req.Id)
+	res, err := c.ExecContext(ctx, "DELETE FROM ToDo WHERE `ID`=?", req.Id)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, "failed to delete ToDo->"+err.Error())
 	}

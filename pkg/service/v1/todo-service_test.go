@@ -11,7 +11,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 
-	v1 "github.com/AndreyLM/go-grpc-rest.git/pkg/api/v1"
+	v1 "github.com/AndreyLM/go-grpc-rest/pkg/api/v1"
 )
 
 // TestToDoServiceServerCreate - create test
